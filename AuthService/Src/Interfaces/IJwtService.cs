@@ -10,5 +10,7 @@ namespace AuthService.Src.Interfaces
     {
         string GenerateToken(string userId, string username, string email, string role);
         ClaimsPrincipal? ValidateToken(string token);
+        Task<bool> IsTokenBlacklistedAsync(string token);
+        Task BlacklistTokenAsync(string token, string userId, DateTime expiresAt);
     }
 }

@@ -6,7 +6,9 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using AuthService.Src.Configurations;
+using AuthService.Src.Data;
 using AuthService.Src.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace AuthService.Src.Services
@@ -14,10 +16,12 @@ namespace AuthService.Src.Services
     public class JwtService : IJwtService
     {
         private readonly JwtSettings _jwtSettings;
+        private readonly AuthDbContext _dbContext;
 
-        public JwtService(JwtSettings jwtSettings)
+        public JwtService(JwtSettings jwtSettings, AuthDbContext dbContext)
         {
             _jwtSettings = jwtSettings;
+            _dbContext = dbContext;
         }
 
         public string GenerateToken(string userId, string username, string email, string role)
@@ -72,6 +76,26 @@ namespace AuthService.Src.Services
             {
                 return null;
             }
+        }
+
+        public Task BlacklistTokenAsync(string token, string userId, DateTime expiresAt)
+        {
+            var blacklistedToken = new Models.TokenBlacklist
+            {
+                Id = Guid.NewGuid(),
+                Token = token,
+                UserId = userId,
+                BlacklistedAt = DateTime.UtcNow,
+                ExpiresAt = expiresAt
+            };
+
+            _dbContext.TokenBlacklists.Add(blacklistedToken);
+            return _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<bool> IsTokenBlacklistedAsync(string token)
+        {
+            return await _dbContext.TokenBlacklists.AnyAsync(x => x.Token == token);
         }
     }
 }

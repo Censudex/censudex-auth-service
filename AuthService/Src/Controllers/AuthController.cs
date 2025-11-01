@@ -51,12 +51,13 @@ namespace AuthService.Src.Controllers
                 return Unauthorized();
             }
         }
-        
-        [HttpGet("validate")]
-        public IActionResult ValidateToken()
+
+        [HttpGet("validate-token")]
+        public async Task<ActionResult<ValidateTokenResponse>> ValidateToken()
         {
             try
             {
+                // Obtener token del header Authorization
                 var authHeader = Request.Headers["Authorization"].FirstOrDefault();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
@@ -69,13 +70,24 @@ namespace AuthService.Src.Controllers
 
                 var token = authHeader.Substring("Bearer ".Length).Trim();
 
+                // Verificar si está en la blacklist
+                if (await _jwtService.IsTokenBlacklistedAsync(token))
+                {
+                    return Unauthorized(new ValidateTokenResponse
+                    {
+                        IsValid = false,
+                        Message = "Token has been revoked"
+                    });
+                }
+
+                // Validar token
                 var principal = _jwtService.ValidateToken(token);
                 if (principal == null)
                 {
                     return Unauthorized(new ValidateTokenResponse
                     {
                         IsValid = false,
-                        Message = "Token invalid or expired"
+                        Message = "Token is invalid or expired"
                     });
                 }
 
@@ -86,7 +98,7 @@ namespace AuthService.Src.Controllers
                 return Ok(new ValidateTokenResponse
                 {
                     IsValid = true,
-                    Message = "Token valid",
+                    Message = "Token is valid",
                     UserId = userId,
                     Username = username,
                     Role = role
@@ -99,6 +111,39 @@ namespace AuthService.Src.Controllers
                     IsValid = false,
                     Message = "Error validating token"
                 });
+            }
+        }
+
+        [HttpPost("logout")]
+        public async Task<ActionResult> Logout([FromBody] LogoutRequest request)
+        {
+            try
+            {
+                // Validar token antes de agregarlo a la blacklist
+                var principal = _jwtService.ValidateToken(request.Token);
+                if (principal == null)
+                {
+                    return BadRequest(new { message = "Token is invalid" });
+                }
+
+                // Obtener información del token
+                var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown";
+                var expClaim = principal.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
+                var expiresAt = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expClaim!)).UtcDateTime;
+
+                // Agregar a blacklist
+                await _jwtService.BlacklistTokenAsync(request.Token, userId, expiresAt);
+
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Session closed successfully"
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "Error closing session" });
             }
         }
     }
