@@ -1,7 +1,9 @@
 using AuthService.Src.Configurations;
+using AuthService.Src.Data;
 using AuthService.Src.Interfaces;
 using AuthService.Src.Services;
 using DotNetEnv;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 Env.Load();
@@ -50,7 +52,6 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
 // Configurar JWT Settings
 var jwtSettings = new JwtSettings
 {
@@ -63,9 +64,25 @@ var jwtSettings = new JwtSettings
 
 builder.Services.AddSingleton(jwtSettings);
 
+// Configurar DbContext para blacklist
+var connectionString = $"Host={Environment.GetEnvironmentVariable("DATABASE_HOST")};" +
+                      $"Port={Environment.GetEnvironmentVariable("DATABASE_PORT")};" +
+                      $"Database={Environment.GetEnvironmentVariable("DATABASE_NAME")};" +
+                      $"Username={Environment.GetEnvironmentVariable("DATABASE_USER")};" +
+                      $"Password={Environment.GetEnvironmentVariable("DATABASE_PASSWORD")}";
+
+builder.Services.AddDbContext<AuthDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
 builder.Services.AddScoped<IJwtService, JwtService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    context.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
