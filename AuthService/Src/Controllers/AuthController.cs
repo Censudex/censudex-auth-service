@@ -52,23 +52,12 @@ namespace AuthService.Src.Controllers
             }
         }
 
-        [HttpGet("validate-token")]
-        public async Task<ActionResult<ValidateTokenResponse>> ValidateToken()
+        [HttpPost("validate-token")]
+        public async Task<ActionResult<ValidateTokenResponse>> ValidateToken([FromBody] ValidateTokenRequest request)
         {
             try
             {
-                // Obtener token del header Authorization
-                var authHeader = Request.Headers["Authorization"].FirstOrDefault();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                {
-                    return BadRequest(new ValidateTokenResponse
-                    {
-                        IsValid = false,
-                        Message = "Token not provided"
-                    });
-                }
-
-                var token = authHeader.Substring("Bearer ".Length).Trim();
+                var token = request.Token;
 
                 // Verificar si está en la blacklist
                 if (await _jwtService.IsTokenBlacklistedAsync(token))
