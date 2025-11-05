@@ -29,7 +29,7 @@ namespace AuthService.Src.Controllers
                     userId: Guid.NewGuid().ToString(),
                     username: "admin",
                     email: request.Email,
-                    role: "Administrator"
+                    role: "ADMIN"
                 );
 
                 var response = new LoginResponse
@@ -40,7 +40,7 @@ namespace AuthService.Src.Controllers
                         Id = Guid.NewGuid().ToString(),
                         Email = request.Email,
                         Username = "admin",
-                        Role = "Administrator"
+                        Role = "ADMIN"
                     }
                 };
 
