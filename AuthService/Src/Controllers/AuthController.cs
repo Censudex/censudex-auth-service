@@ -23,32 +23,25 @@ namespace AuthService.Src.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            if (request.Email == Environment.GetEnvironmentVariable("ADMIN_EMAIL") && request.Password == Environment.GetEnvironmentVariable("ADMIN_PASSWORD"))
+            try
             {
-                var token = _jwtService.GenerateToken(
-                    userId: Guid.NewGuid().ToString(),
-                    username: "admin",
-                    email: request.Email,
-                    role: "ADMIN"
-                );
+                var token = _jwtService.GenerateToken(request.Id, request.Email, request.Username, request.Role);
 
-                var response = new LoginResponse
+                return Ok(new
                 {
                     Token = token,
                     User = new UserInfo
                     {
-                        Id = Guid.NewGuid().ToString(),
+                        Id = request.Id,
+                        Username = request.Username,
                         Email = request.Email,
-                        Username = "admin",
-                        Role = "ADMIN"
+                        Role = request.Role
                     }
-                };
-
-                return Ok(response);
+                });
             }
-            else
+            catch (Exception)
             {
-                return Unauthorized();
+                return StatusCode(500, new { message = "Error during login" });
             }
         }
 
