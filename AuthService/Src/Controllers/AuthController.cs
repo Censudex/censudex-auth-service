@@ -25,7 +25,7 @@ namespace AuthService.Src.Controllers
         {
             try
             {
-                var token = _jwtService.GenerateToken(request.Id, request.Email, request.Username, request.Role);
+                var token = _jwtService.GenerateToken(request.Id, request.Username, request.Email, request.Role);
 
                 return Ok(new
                 {

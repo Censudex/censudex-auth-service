@@ -1,9 +1,12 @@
+using System.Text;
 using AuthService.Src.Configurations;
 using AuthService.Src.Data;
 using AuthService.Src.Interfaces;
 using AuthService.Src.Services;
 using DotNetEnv;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 Env.Load();
@@ -52,7 +55,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Configurar JWT Settings
+// Después de configurar jwtSettings
 var jwtSettings = new JwtSettings
 {
     Secret = Environment.GetEnvironmentVariable("JWT_SECRET")
@@ -63,6 +66,48 @@ var jwtSettings = new JwtSettings
 };
 
 builder.Services.AddSingleton(jwtSettings);
+
+// Decodificar el secreto desde Base64
+byte[] key;
+try
+{
+    key = Convert.FromBase64String(jwtSettings.Secret);
+}
+catch (FormatException)
+{
+    key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
+}
+
+if (key.Length < 32)
+{
+    throw new InvalidOperationException(
+        $"JWT_SECRET debe tener al menos 32 bytes. Actual: {key.Length} bytes");
+}
+
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
 // Configurar DbContext para blacklist
 var connectionString = $"Host={Environment.GetEnvironmentVariable("DATABASE_HOST")};" +

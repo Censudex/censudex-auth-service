@@ -17,26 +17,52 @@ namespace AuthService.Src.Services
     {
         private readonly JwtSettings _jwtSettings;
         private readonly AuthDbContext _dbContext;
+        private readonly byte[] _secretKey;
 
         public JwtService(JwtSettings jwtSettings, AuthDbContext dbContext)
         {
             _jwtSettings = jwtSettings;
             _dbContext = dbContext;
+
+            // Decodificar el secreto desde Base64 una sola vez
+            try
+            {
+                _secretKey = Convert.FromBase64String(_jwtSettings.Secret);
+                
+                // Validar que tenga al menos 256 bits (32 bytes)
+                if (_secretKey.Length < 32)
+                {
+                    throw new InvalidOperationException(
+                        $"JWT_SECRET debe tener al menos 32 bytes. Actual: {_secretKey.Length} bytes");
+                }
+            }
+            catch (FormatException)
+            {
+                // Si no es Base64, intentar como UTF8 (fallback)
+                _secretKey = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
+                
+                if (_secretKey.Length < 32)
+                {
+                    throw new InvalidOperationException(
+                        $"JWT_SECRET debe tener al menos 32 bytes. Actual: {_secretKey.Length} bytes. " +
+                        $"Genera uno nuevo con: openssl rand -base64 32");
+                }
+            }
         }
 
         public string GenerateToken(string userId, string username, string email, string role)
         {
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, userId),
-                new Claim(JwtRegisteredClaimNames.UniqueName, username),
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim(JwtRegisteredClaimNames.GivenName, username),
                 new Claim(JwtRegisteredClaimNames.Email, email),
                 new Claim(ClaimTypes.Role, role),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
+            var key = new SymmetricSecurityKey(_secretKey);
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
