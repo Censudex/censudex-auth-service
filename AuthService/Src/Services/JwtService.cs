@@ -13,12 +13,32 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace AuthService.Src.Services
 {
+    /// <summary>
+    /// Servicio para la generación y validación de tokens JWT.
+    /// </summary>
     public class JwtService : IJwtService
     {
+        /// <summary>
+        /// Configuraciones de JWT.
+        /// </summary>
         private readonly JwtSettings _jwtSettings;
+
+        /// <summary>
+        /// Contexto de la base de datos para gestionar tokens en lista negra.
+        /// </summary>
         private readonly AuthDbContext _dbContext;
+
+        /// <summary>
+        /// Clave secreta decodificada en bytes.
+        /// </summary>
         private readonly byte[] _secretKey;
 
+        /// <summary>
+        /// Constructor del servicio JwtService.
+        /// </summary>
+        /// <param name="jwtSettings">Configuraciones de JWT.</param>
+        /// <param name="dbContext">Contexto de la base de datos para gestionar tokens en lista negra.</param>
+        /// <exception cref="InvalidOperationException">Excepción lanzada si la clave secreta no cumple con los requisitos de longitud.</exception>
         public JwtService(JwtSettings jwtSettings, AuthDbContext dbContext)
         {
             _jwtSettings = jwtSettings;
@@ -50,6 +70,14 @@ namespace AuthService.Src.Services
             }
         }
 
+        /// <summary>
+        /// Genera un token JWT para un usuario dado.
+        /// </summary>
+        /// <param name="userId">Identificador único del usuario.</param>
+        /// <param name="username">Nombre del usuario.</param>
+        /// <param name="email">Email del usuario.</param>
+        /// <param name="role">Rol del usuario.</param>
+        /// <returns>Token JWT generado.</returns>
         public string GenerateToken(string userId, string username, string email, string role)
         {
             var claims = new[]
@@ -76,6 +104,11 @@ namespace AuthService.Src.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
+        /// <summary>
+        /// Valida un token JWT y devuelve los claims si es válido.
+        /// </summary>
+        /// <param name="token">Token JWT a validar.</param>
+        /// <returns>ClaimsPrincipal si el token es válido; de lo contrario, null.</returns>
         public ClaimsPrincipal? ValidateToken(string token)
         {
             try
@@ -104,6 +137,13 @@ namespace AuthService.Src.Services
             }
         }
 
+        /// <summary>
+        /// Agrega un token a la lista negra.
+        /// </summary>
+        /// <param name="token">Token de JWT a agregar a la lista negra.</param>
+        /// <param name="userId">Identificador del usuario al que pertenece el token.</param>
+        /// <param name="expiresAt">Fecha y hora de expiración del token.</param>
+        /// <returns>Resultado de la operación de agregar a la lista negra.</returns>
         public Task BlacklistTokenAsync(string token, string userId, DateTime expiresAt)
         {
             var blacklistedToken = new Models.TokenBlacklist
@@ -119,6 +159,11 @@ namespace AuthService.Src.Services
             return _dbContext.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Verifica si un token está en la lista negra.
+        /// </summary>
+        /// <param name="token">Token JWT a verificar.</param>
+        /// <returns>True si el token está en la lista negra; de lo contrario, false.</returns>
         public async Task<bool> IsTokenBlacklistedAsync(string token)
         {
             return await _dbContext.TokenBlacklists.AnyAsync(x => x.Token == token);

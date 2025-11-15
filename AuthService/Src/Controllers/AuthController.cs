@@ -9,17 +9,32 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Src.Controllers
 {
+    /// <summary>
+    /// Controlador para la autenticación y gestión de tokens JWT.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
+        /// <summary>
+        /// Servicio de JWT inyectado.
+        /// </summary>
         private readonly IJwtService _jwtService;
 
+        /// <summary>
+        /// Constructor del controlador de autenticación.
+        /// </summary>
+        /// <param name="jwtService">Servicio de JWT inyectado.</param>
         public AuthController(IJwtService jwtService)
         {
             _jwtService = jwtService;
         }
 
+        /// <summary>
+        /// Iniciar sesión y generar un token JWT.
+        /// </summary>
+        /// <param name="request">Datos de inicio de sesión.</param>
+        /// <returns>Token JWT y datos del usuario.</returns>
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
@@ -45,6 +60,11 @@ namespace AuthService.Src.Controllers
             }
         }
 
+        /// <summary>
+        /// Validar un token JWT.
+        /// </summary>
+        /// <param name="request">Token a validar.</param>
+        /// <returns>Resultado de la validación.</returns>
         [HttpPost("validate-token")]
         public async Task<ActionResult<ValidateTokenResponse>> ValidateToken([FromBody] ValidateTokenRequest request)
         {
@@ -96,6 +116,11 @@ namespace AuthService.Src.Controllers
             }
         }
 
+        /// <summary>
+        /// Cerrar sesión y agregar el token a la blacklist.
+        /// </summary>
+        /// <param name="request">Token a invalidar.</param>
+        /// <returns>Resultado de la operación.</returns>
         [HttpPost("logout")]
         public async Task<ActionResult> Logout([FromBody] LogoutRequest request)
         {

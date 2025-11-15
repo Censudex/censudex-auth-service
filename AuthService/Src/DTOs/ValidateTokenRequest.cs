@@ -6,9 +6,15 @@ using System.Threading.Tasks;
 
 namespace AuthService.Src.DTOs
 {
+    /// <summary>
+    /// DTO para la solicitud de validación de token.
+    /// </summary>
     public class ValidateTokenRequest
     {
-        [Required(ErrorMessage = "The token is required for logout.")]
+        /// <summary>
+        /// Token de autenticación a validar.
+        /// </summary>
+        [Required(ErrorMessage = "The token is required for token validation.")]
         public string Token { get; set; } = string.Empty;
     }
 }
